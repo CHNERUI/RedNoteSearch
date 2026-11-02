@@ -22,7 +22,7 @@ for (const width of [1433, 1024, 720]) {
       [`/evaluation/runs/${ids.run}`, "评测运行详情"],
       ["/viral-samples", "爆款结构分析"],
       [`/viral-samples/${ids.sample}`, "样本详情"],
-      [`/viral-patterns/${ids.pattern}`, "结构详情"],
+      [`/viral-patterns/${ids.pattern}`, "样本详情"],
     ]) {
       await page.goto(url)
       await expect(
@@ -50,13 +50,14 @@ test("Dataset JSON and result details use dialogs; rubric scores send the result
 }) => {
   const writes = await mockAnalysis(page)
   await page.goto(`/evaluation/datasets/${ids.dataset}`)
-  await page.getByRole("button", { name: "查看 JSON", exact: true }).click()
-  await expect(page.getByRole("dialog")).toContainText("香氛表达（演示）")
+  await page.getByRole("button", { name: "编辑", exact: true }).click()
+  await expect(page.getByLabel("输入（JSON 对象）")).toHaveValue(
+    /香氛表达（演示）/,
+  )
   await page.screenshot({ path: test.info().outputPath("case-json.png") })
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "关闭", exact: true })
-    .first()
+    .getByRole("button", { name: "取消", exact: true })
     .click()
   await page.goto(`/evaluation/runs/${ids.run}`)
   await page.getByRole("button", { name: "查看详情", exact: true }).click()

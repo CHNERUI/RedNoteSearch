@@ -13,7 +13,6 @@ import {
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-
 import {
   type CreativeTypePublic,
   CreativeTypesService,
@@ -30,6 +29,7 @@ import { ForbiddenPage, MissingPage } from "@/components/Common/ForbiddenPage"
 import { type DockStep, ProgressDock } from "@/components/Common/ProgressDock"
 import { StageProgress } from "@/components/Common/StageProgress"
 import { FlowStatusBadge } from "@/components/Common/StatusBadge"
+import { TypeBadge, typeBadgeColor } from "@/components/Common/TypeBadge"
 import { ToneSuggestDialog } from "@/components/Generate/ToneSuggestDialog"
 import {
   emptyPromo,
@@ -46,6 +46,7 @@ import { useBrand } from "@/hooks/useBrand"
 import { type ApiErrorInfo, parseApiError } from "@/lib/apiError"
 import { cn } from "@/lib/utils"
 import {
+  CUSTOM_SCENE_TEXT as CS,
   EMOJI_LABEL,
   LENGTH_LABEL,
   label,
@@ -108,30 +109,29 @@ function Field({
 const selectClass =
   "h-10 w-full rounded-lg border border-transparent bg-surface-low px-3 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
 
-const SCENE_LOOK: Record<string, { icon: LucideIcon; bg: string; fg: string }> =
-  {
-    seeding: { icon: Leaf, bg: "bg-scene-sky", fg: "text-tone-info" },
-    review: {
-      icon: BadgeCheck,
-      bg: "bg-scene-blue",
-      fg: "text-tone-soft-blue",
-    },
-    tutorial: { icon: BookOpen, bg: "bg-scene-mint", fg: "text-tone-ok" },
-    launch: { icon: Sparkles, bg: "bg-scene-yellow", fg: "text-tone-note" },
-    promotion: { icon: Tag, bg: "bg-scene-orange", fg: "text-tone-warn" },
-    story: { icon: BookHeart, bg: "bg-scene-pink", fg: "text-tone-err" },
-  }
+const SCENE_ICON: Record<string, LucideIcon> = {
+  seeding: Leaf,
+  review: BadgeCheck,
+  tutorial: BookOpen,
+  launch: Sparkles,
+  promotion: Tag,
+  story: BookHeart,
+}
 
 function SceneCards({
   scenarios,
   types,
   value,
   onChange,
+  custom,
+  onCustom,
 }: {
   scenarios: ScenarioPublic[]
   types: CreativeTypePublic[]
   value: string
   onChange: (id: string) => void
+  custom: boolean
+  onCustom: () => void
 }) {
   return (
     <div
@@ -142,8 +142,7 @@ function SceneCards({
       {types.map((type) => {
         const candidates = scenarios.filter((s) => s.scene === type.key)
         const s = candidates.find((s) => s.id === value) ?? candidates[0]
-        const look = SCENE_LOOK[type.key] ?? SCENE_LOOK.seeding
-        const Icon = look.icon
+        const Icon = SCENE_ICON[type.key] ?? Leaf
         const on = candidates.some((s) => s.id === value)
         return (
           <label key={type.key} className={s ? "cursor-pointer" : "opacity-60"}>
@@ -166,15 +165,16 @@ function SceneCards({
               <span
                 className={cn(
                   "flex size-8 shrink-0 items-center justify-center rounded-lg",
-                  look.bg,
-                  look.fg,
+                  typeBadgeColor(type.key),
                 )}
               >
                 <Icon className="size-4" />
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-[13px] font-semibold">
-                  {type.name || PR.unknownType}
+                  <TypeBadge typeKey={type.key}>
+                    {type.name || PR.unknownType}
+                  </TypeBadge>
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
                   {s?.source_pattern_id && (
@@ -192,6 +192,26 @@ function SceneCards({
           </label>
         )
       })}
+      <label className="cursor-pointer">
+        <input
+          type="radio"
+          name="scene"
+          className="peer sr-only"
+          checked={custom}
+          onChange={onCustom}
+        />
+        <span
+          className={cn(
+            "flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all peer-focus-visible:ring-2 peer-focus-visible:ring-ring",
+            custom
+              ? "border-primary bg-accent shadow-sm"
+              : "border-border/60 bg-card hover:bg-surface-low",
+          )}
+        >
+          <Sparkles className="size-8 shrink-0 rounded-lg bg-surface-low p-2 text-primary" />
+          <span className="text-[13px] font-semibold">{CS.custom}</span>
+        </span>
+      </label>
     </div>
   )
 }
@@ -340,6 +360,8 @@ function NewTaskForm() {
   const [toneOpen, setToneOpen] = useState(false)
   const preselected = Route.useSearch().scenario
   const [scenarioId, setScenarioId] = useState(preselected ?? "")
+  const [customScene, setCustomScene] = useState(false)
+  const [sceneDescription, setSceneDescription] = useState("")
   const [brief, setBrief] = useState("")
   const [terms, setTerms] = useState("")
   const [pasted, setPasted] = useState("")
@@ -356,6 +378,11 @@ function NewTaskForm() {
   const brandScenarios = (scenarios.data ?? []).filter(
     (s: ScenarioPublic) => s.brand_id === null || s.brand_id === brandId,
   )
+  const taskBrief = customScene
+    ? [brief, `${CS.description}：${sceneDescription.trim()}`]
+        .filter(Boolean)
+        .join("\n")
+    : brief
   const materialCount = files.length + (pasted.trim() ? 1 : 0)
 
   const submit = useMutation({
@@ -367,7 +394,7 @@ function NewTaskForm() {
             ...promoBody(promo),
             scenario_id: scenarioId,
             style,
-            brief,
+            brief: taskBrief,
             required_terms: splitTerms(terms),
             task_materials: pasted.trim()
               ? [{ filename: "粘贴资料", text: pasted }]
@@ -420,7 +447,7 @@ function NewTaskForm() {
     )
   }
 
-  const briefLength = [...brief].length
+  const briefLength = [...taskBrief].length
   const termCount = splitTerms(terms).length
   const pastedLength = [...pasted].length
   const ready =
@@ -431,6 +458,9 @@ function NewTaskForm() {
       (type) =>
         type.key === brandScenarios.find((s) => s.id === scenarioId)?.scene,
     ) &&
+    (!customScene ||
+      (sceneDescription.trim().length > 0 &&
+        [...sceneDescription].length <= 50)) &&
     materialCount <= MAX_MATERIALS &&
     pastedLength <= MAX_MATERIAL_CHARS &&
     briefLength <= MAX_BRIEF &&
@@ -499,8 +529,16 @@ function NewTaskForm() {
               <SceneCards
                 types={creativeTypes.data ?? []}
                 scenarios={brandScenarios}
-                value={scenarioId}
-                onChange={setScenarioId}
+                value={customScene ? "" : scenarioId}
+                custom={customScene}
+                onCustom={() => {
+                  setCustomScene(true)
+                  setScenarioId("")
+                }}
+                onChange={(id) => {
+                  setCustomScene(false)
+                  setScenarioId(id)
+                }}
               />
             )}
             {creativeTypes.isSuccess && creativeTypes.data.length === 0 && (
@@ -508,27 +546,70 @@ function NewTaskForm() {
             )}
           </div>
 
-          {brandScenarios.filter(
-            (s) =>
-              s.scene ===
-              brandScenarios.find((row) => row.id === scenarioId)?.scene,
-          ).length > 1 && (
-            <FilterSelect
-              title={PT.chooseTemplate}
-              value={scenarioId}
-              onChange={setScenarioId}
-              options={brandScenarios
-                .filter(
-                  (s) =>
-                    s.scene ===
-                    brandScenarios.find((row) => row.id === scenarioId)?.scene,
-                )
-                .map((s) => ({
-                  value: s.id,
-                  label: `${s.name} v${s.template_version}`,
-                }))}
-            />
+          {customScene && (
+            <div className="space-y-3">
+              <FilterSelect
+                title={CS.template}
+                value={scenarioId}
+                onChange={setScenarioId}
+                options={[
+                  { value: "", label: CS.chooseTemplate },
+                  ...brandScenarios
+                    .filter((s) =>
+                      creativeTypes.data?.some((type) => type.key === s.scene),
+                    )
+                    .map((s) => ({
+                      value: s.id,
+                      label: `${s.name} v${s.template_version}`,
+                    })),
+                ]}
+              />
+              <Field
+                title={CS.description}
+                hint={CS.counter([...sceneDescription].length)}
+              >
+                <Input
+                  value={sceneDescription}
+                  required
+                  aria-required="true"
+                  onChange={(e) =>
+                    setSceneDescription(
+                      [...e.target.value].slice(0, 50).join(""),
+                    )
+                  }
+                />
+              </Field>
+              <p className="text-xs text-muted-foreground">
+                {CS.hint}{" "}
+                <Link className="text-link underline" to="/creative-types">
+                  {CS.manageTypes}
+                </Link>
+              </p>
+            </div>
           )}
+          {!customScene &&
+            brandScenarios.filter(
+              (s) =>
+                s.scene ===
+                brandScenarios.find((row) => row.id === scenarioId)?.scene,
+            ).length > 1 && (
+              <FilterSelect
+                title={PT.chooseTemplate}
+                value={scenarioId}
+                onChange={setScenarioId}
+                options={brandScenarios
+                  .filter(
+                    (s) =>
+                      s.scene ===
+                      brandScenarios.find((row) => row.id === scenarioId)
+                        ?.scene,
+                  )
+                  .map((s) => ({
+                    value: s.id,
+                    label: `${s.name} v${s.template_version}`,
+                  }))}
+              />
+            )}
           {scenarios.isSuccess && brandScenarios.length === 0 && (
             <p className="text-sm text-muted-foreground">{PT.noTemplates}</p>
           )}
