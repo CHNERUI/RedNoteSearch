@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useState } from "react"
-import { type ScenarioPublic, ScenariosService } from "@/client"
+import {
+  CreativeTypesService,
+  type ScenarioPublic,
+  ScenariosService,
+} from "@/client"
 import { CharCounter } from "@/components/Common/CharCounter"
 import { EmptyState } from "@/components/Common/EmptyState"
 import { ErrorBanner } from "@/components/Common/ErrorBanner"
@@ -394,6 +398,17 @@ function TemplateDialog({
   const [scene, setScene] = useState(from?.scene ?? "seeding")
   const [name, setName] = useState(from?.name ?? "")
   const [structure, setStructure] = useState(from?.structure ?? "")
+
+  const creativeTypes = useQuery({
+    queryKey: ["creative-types", brandId],
+    queryFn: async () =>
+      (
+        await CreativeTypesService.typesReadCreativeTypes({
+          path: { brand_id: brandId },
+        })
+      ).data.items,
+    enabled: !!brandId,
+  })
   const save = useMutation({
     mutationFn: async () =>
       (
@@ -442,14 +457,23 @@ function TemplateDialog({
                 disabled={!!from}
                 onChange={(e) => setScene(e.target.value)}
               >
-                {from && !(scene in SCENE_LABEL) && (
-                  <option value={scene}>{label(SCENE_LABEL, scene)}</option>
-                )}
-                {Object.entries(SCENE_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
+                {from &&
+                  !(scene in SCENE_LABEL) &&
+                  !(creativeTypes.data ?? []).some((type) => type.key === scene) && (
+                    <option value={scene}>{label(SCENE_LABEL, scene)}</option>
+                  )}
+                {Object.entries(SCENE_LABEL).map(([key, name]) => (
+                  <option key={key} value={key}>
+                    {name}
                   </option>
                 ))}
+                {(creativeTypes.data ?? [])
+                  .filter((type) => !(type.key in SCENE_LABEL))
+                  .map((type) => (
+                    <option key={type.key} value={type.key}>
+                      {type.name}
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="space-y-1">
