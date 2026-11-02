@@ -882,3 +882,11 @@ id,layer,rule_type,severity,pattern,is_regex,suggestion,source_name,source_url,s
 - POST 的已有语气、exclude 和本次返回项统一以 `tone_key` 比较：NFKC、casefold，忽略空白和 Unicode 标点；保留符号与控制字符的差异，不额外做语义相似判断。显示文字仍使用清洗后的原文，不输出归一化键。第一期 GET 的分组与统计不变。
 - 从输出中删除与已有语气或 exclude 等价的项，同一批等价项只保留最先出现的一条；只含标点/空白而形成空键的模型项丢弃。不得为了凑 count 编造条目；全部被过滤时沿用 TONE_NO_VALID_SUGGESTIONS。
 - 不修改 tone-v1 系统提示词文字、提示词版本或 gen-v*；already_shown 只扩展现有 JSON 上下文。exclude 与建议正文不进入成功审计；测试只用 fake。
+
+## R6 B3：评测样本修改与删除生成新版本
+
+`POST /evaluation/datasets/{dataset_id}/revisions`，成功 201 返回既有 DatasetPublic。资源来自路径，继承原评测集的名称、类型、brand_id、group_id；不接收这些字段覆盖。品牌评测集仅本品牌 admin 可写（非成员、不存在或不可见统一404，editor按既有评测权限404）；全局集仅平台管理员可写（可见全局集的品牌管理员写入返回403）；未登录401。
+
+请求 `{"updates":[{"case_index":0,"input":{},"expected":{},"annotators":[]}],"delete_case_indexes":[1]}`。updates 每项为该序号的完整替换，沿用 CaseIn 的 input/expected/annotators；两个列表默认空，各最多200项。序号为严格非负整数，对应旧版本零起始 case_index，不是分页行号。未知字段、重复序号、同项同时改删、越界、两列表均空、删到零条或类型校验失败均422。全有或全无，无半成品。
+
+保留原顺序，替换后删除指定项，新版本重新从0编号。原集、原样本及已有运行不修改或删除。新版本号为同 group_id 当前最大版本加1（不要求源版本是最新），哈希按现有规范重新计算；并发同组写入用最早版本行锁串行化，已有创建下一版本接口也使用该锁，不能以唯一约束500代替并发控制。成功沿用 eval_dataset.create 审计，只记类型、版本、数量，不记录样本正文；无模型调用、无迁移。
