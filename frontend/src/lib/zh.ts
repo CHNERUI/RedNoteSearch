@@ -1047,6 +1047,17 @@ export const SCENARIO_TEXT = {
   manage: "管理场景模板",
 } as const
 
+export const VIRAL_TEMPLATE_EDIT_TEXT = {
+  structure: "模板结构",
+  required: "请填写模板结构",
+  tooLong: "模板结构不能超过 2000 字",
+  hint: "可修改结构后再转换；保存的是本次填写的文字，不改动原结构。",
+  conflict:
+    "此品牌已有同创作类型、同名模板。请选择存为新版本，或换个名字后再提交。",
+  rename: "换个名字",
+  newVersion: "存为新版本",
+} as const
+
 // 场景模板详情与筛选。
 export const SCENARIO_DETAIL_TEXT = {
   detail: "模板详情",
