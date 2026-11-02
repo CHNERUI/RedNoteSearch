@@ -908,3 +908,13 @@ GET /compliance-rules增加include_inactive，默认true以兼容现有包含停
 每次从部署随附的extensions/results-helper读取运行文件并在内存生成zip，包内只有results-helper/manifest.json、parse.js、popup.html、popup.js，不递归打包，不含test、配置、密钥或其他文件；拒绝符号链接。来源目录不接收请求参数。包缺失/不可读等返回503 EXTENSION_PACKAGE_UNAVAILABLE及通用中文提示和request_id，不泄露本机路径。
 
 运行镜像须COPY上述四个运行文件到/app/extensions/results-helper；该Docker改动在本PR作为明确基础设施配合项，由A审阅。不改变插件权限、业务数据、密钥或鉴权规则，无模型调用，无迁移。
+
+## R6 B1：编辑爆款样本与结构过期标记（含迁移）
+
+`PATCH /viral-samples/{sample_id}`：请求仅允许可选 text、source_url，至少提供一项。text 原始1–5000码点且不能全空白，显式null拒绝；source_url沿用创建样本的HttpUrl校验、最多2000字符，可用null清空。仅存储链接、不访问或抓取。不接收品牌、note、修订号覆盖。品牌admin可改；同品牌editor403，资源不存在或非成员404（平台管理员没有成员身份也404）；未登录401。成功200返回既有样本字段及structures_stale。
+
+没有可复用的分析文本哈希，因此迁移新增 viral_sample.revision（整数非空，默认0）、viral_pattern.sample_revision（可空，旧结构回填0）。仅文字与存储值实际不同时revision加1，只改链接或提交相同文字不增加。PATCH使用样本行锁防止并发修改丢失。
+
+样本列表、创建、读取及PATCH响应增加structures_stale：有结构且没有任何结构的sample_revision等于当前revision时为true；无结构为false。分析捕获开始时的文字和revision，新结构保存该revision；重新分析当前文字成功后自然变false，旧结构保留。并发编辑不会把旧文字分析误标成当前版本。迁移后原样本和旧结构均为0，不显示过期。
+
+成功写viral.sample_update审计，只含字段名、是否改文字、修订号和字数，不含正文或网址；与更新原子提交。PATCH不调用模型、不自动分析、不改提示词或已有模板。

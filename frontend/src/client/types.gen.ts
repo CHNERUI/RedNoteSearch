@@ -3485,6 +3485,10 @@ export type ViralSampleListItem = {
      * Excerpt
      */
     excerpt: string;
+    /**
+     * Structures Stale
+     */
+    structures_stale?: boolean;
 };
 
 /**
@@ -3515,6 +3519,24 @@ export type ViralSamplePublic = {
      * Created At
      */
     created_at: string;
+    /**
+     * Structures Stale
+     */
+    structures_stale?: boolean;
+};
+
+/**
+ * ViralSampleUpdate
+ */
+export type ViralSampleUpdate = {
+    /**
+     * Text
+     */
+    text?: string | null;
+    /**
+     * Source Url
+     */
+    source_url?: string | null;
 };
 
 /**
@@ -7054,6 +7076,36 @@ export type viralReadSampleResponses = {
 };
 
 export type viralReadSampleResponse = viralReadSampleResponses[keyof viralReadSampleResponses];
+
+export type viralUpdateSampleData = {
+    body: ViralSampleUpdate;
+    path: {
+        /**
+         * Sample Id
+         */
+        sample_id: string;
+    };
+    query?: never;
+    url: '/api/v1/viral-samples/{sample_id}';
+};
+
+export type viralUpdateSampleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type viralUpdateSampleError = viralUpdateSampleErrors[keyof viralUpdateSampleErrors];
+
+export type viralUpdateSampleResponses = {
+    /**
+     * Successful Response
+     */
+    200: ViralSamplePublic;
+};
+
+export type viralUpdateSampleResponse = viralUpdateSampleResponses[keyof viralUpdateSampleResponses];
 
 export type viralReadPatternsData = {
     body?: never;
