@@ -900,3 +900,11 @@ id,layer,rule_type,severity,pattern,is_regex,suggestion,source_name,source_url,s
 状态实际变化才加rule_version、更新updated_at；重复设置为同状态返回success=true、changed=false且不加版本。保留is_sample和所有来源/规则内容，切换不表示来源已核对。每个成功条目（含未变化）写compliance_rule.batch_state审计，记录状态、是否变化、版本与原因，不含规则全文。历史风险记录不改写。
 
 GET /compliance-rules增加include_inactive，默认true以兼容现有包含停用项的调用；R6页面默认显式传false，即默认隐藏停用项，开启查看停用项时传true，之后可恢复。false在服务端过滤后再分页计数。现有scope和品牌授权语义不变，无迁移、无模型调用。
+
+## R6 B6：下载浏览器插件安装包
+
+`GET /extension/package`：任何已登录的有效用户均可下载，不要求品牌成员或admin；未登录401。成功200，Content-Type为application/zip，Content-Disposition为attachment; filename="results-helper.zip"，Cache-Control:no-store。
+
+每次从部署随附的extensions/results-helper读取运行文件并在内存生成zip，包内只有results-helper/manifest.json、parse.js、popup.html、popup.js，不递归打包，不含test、配置、密钥或其他文件；拒绝符号链接。来源目录不接收请求参数。包缺失/不可读等返回503 EXTENSION_PACKAGE_UNAVAILABLE及通用中文提示和request_id，不泄露本机路径。
+
+运行镜像须COPY上述四个运行文件到/app/extensions/results-helper；该Docker改动在本PR作为明确基础设施配合项，由A审阅。不改变插件权限、业务数据、密钥或鉴权规则，无模型调用，无迁移。
