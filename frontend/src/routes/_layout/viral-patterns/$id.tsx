@@ -25,6 +25,7 @@ import { parseApiError } from "@/lib/apiError"
 import { codePointCount } from "@/lib/count"
 import { formatTime } from "@/lib/format"
 import {
+  SCENARIO_TEXT,
   SCENE_LABEL,
   VIRAL_TEXT as T,
   ANALYSIS_VISUAL_TEXT as V,
@@ -230,6 +231,14 @@ function PatternPage() {
           <p className="break-words">
             {result.name} · {T.templateVersion} {result.template_version}
           </p>
+          <Button asChild size="sm" className="mt-2">
+            <Link
+              to="/generate"
+              search={{ task: undefined, scenario: result.id }}
+            >
+              {SCENARIO_TEXT.useThis}
+            </Link>
+          </Button>
         </div>
       )}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
