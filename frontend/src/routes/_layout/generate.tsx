@@ -16,6 +16,7 @@ import { ErrorBanner } from "@/components/Common/ErrorBanner"
 import { MissingPage } from "@/components/Common/ForbiddenPage"
 import { StageProgress } from "@/components/Common/StageProgress"
 import { FlowStatusBadge } from "@/components/Common/StatusBadge"
+import { FoldSection, InfoTip } from "@/components/Generate/FoldSection"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -47,21 +48,30 @@ const ACCEPT = ".pdf,.docx,.md,.txt,.csv"
 function Field({
   title,
   hint,
+  tip,
   children,
 }: {
   title: string
   hint?: string
+  tip?: string
   children: React.ReactNode
 }) {
   return (
-    // biome-ignore lint/a11y/noLabelWithoutControl: the control is passed in as children
-    <label className="block space-y-1 text-sm">
-      <span className="font-medium">{title}</span>
-      {children}
-      {hint && (
-        <span className="block text-xs text-muted-foreground">{hint}</span>
+    <div className="relative">
+      {/* biome-ignore lint/a11y/noLabelWithoutControl: the control is passed in as children */}
+      <label className="block space-y-1 text-sm">
+        <span className="font-medium">{title}</span>
+        {children}
+        {hint && (
+          <span className="block text-xs text-muted-foreground">{hint}</span>
+        )}
+      </label>
+      {tip && (
+        <span className="absolute right-0 top-0">
+          <InfoTip text={tip} label={`${title}说明`} />
+        </span>
       )}
-    </label>
+    </div>
   )
 }
 
@@ -195,34 +205,25 @@ function NewTaskForm() {
     submit.mutate(start)
   }
 
+  const styleSummary = [
+    style.tone,
+    label(LENGTH_LABEL, style.length, "length"),
+    label(PERSON_LABEL, style.person, "person"),
+    label(EMOJI_LABEL, style.emoji_density, "emoji_density"),
+    `${style.hashtag_count ?? 0} 个话题`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
   return (
     <form
-      className="space-y-6"
+      className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault()
         if (ready) go(true)
       }}
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <Field title="商品">
-          {products.isLoading ? (
-            <Skeleton className="h-9 w-full" />
-          ) : (
-            <select
-              className={selectClass}
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              required
-            >
-              <option value="">请选择商品</option>
-              {(products.data ?? []).map((p: ProductPublic) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
         <Field title="场景">
           {scenarios.isLoading ? (
             <Skeleton className="h-9 w-full" />
@@ -237,6 +238,25 @@ function NewTaskForm() {
               {brandScenarios.map((s: ScenarioPublic) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+        <Field title="商品">
+          {products.isLoading ? (
+            <Skeleton className="h-9 w-full" />
+          ) : (
+            <select
+              className={selectClass}
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+              required
+            >
+              <option value="">请选择商品</option>
+              {(products.data ?? []).map((p: ProductPublic) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
                 </option>
               ))}
             </select>
@@ -259,29 +279,41 @@ function NewTaskForm() {
         />
       )}
 
-      <section className="space-y-3 rounded-xl border bg-card p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">风格</h2>
-          {(presets.data ?? []).length > 0 && (
-            <select
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-              defaultValue=""
-              aria-label="套用风格预设"
-              onChange={(e) => {
-                const p = presets.data?.find((x) => x.id === e.target.value)
-                if (p) setStyle({ ...style, ...p.params })
-              }}
-            >
-              <option value="">套用风格预设</option>
-              {presets.data?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-        <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field
+          title="创作要求"
+          hint={
+            briefLength > MAX_BRIEF
+              ? `已超过 ${MAX_BRIEF} 字（${briefLength} / ${MAX_BRIEF}），请缩短后再提交。`
+              : `${briefLength} / ${MAX_BRIEF}`
+          }
+          tip="写下这篇笔记想表达的重点、读者与限制。"
+        >
+          <Textarea
+            value={brief}
+            onChange={(e) => setBrief(e.target.value)}
+            rows={5}
+          />
+        </Field>
+        <Field
+          title="必须包含的词"
+          hint={
+            termCount > MAX_TERMS
+              ? `最多 ${MAX_TERMS} 个词（现在 ${termCount} 个），请删减后再提交。`
+              : `${termCount} / ${MAX_TERMS}`
+          }
+          tip={`用逗号或换行分隔，最多 ${MAX_TERMS} 个。禁用词来自品牌档案和商品的“禁止宣称”，这里不需要填写。`}
+        >
+          <Textarea
+            value={terms}
+            onChange={(e) => setTerms(e.target.value)}
+            rows={5}
+          />
+        </Field>
+      </div>
+
+      <FoldSection title="风格" summary={styleSummary}>
+        <div className="grid gap-3 md:grid-cols-3">
           <Field title="语气">
             <Input
               value={style.tone ?? ""}
@@ -345,7 +377,7 @@ function NewTaskForm() {
               ))}
             </select>
           </Field>
-          <Field title="话题数量" hint="最多 10 个">
+          <Field title="话题数量" tip="0 到 10 个，默认 5 个。">
             <Input
               type="number"
               min={0}
@@ -356,102 +388,95 @@ function NewTaskForm() {
               }
             />
           </Field>
-        </div>
-      </section>
-
-      <Field
-        title="创作要求"
-        hint={
-          briefLength > MAX_BRIEF
-            ? `已超过 ${MAX_BRIEF} 字（${briefLength} / ${MAX_BRIEF}），请缩短后再提交。`
-            : `写下这篇笔记想表达的重点、读者与限制。${briefLength} / ${MAX_BRIEF}`
-        }
-      >
-        <Textarea
-          value={brief}
-          onChange={(e) => setBrief(e.target.value)}
-          rows={4}
-        />
-      </Field>
-      <Field
-        title="必须包含的词"
-        hint={
-          termCount > MAX_TERMS
-            ? `最多 ${MAX_TERMS} 个词（现在 ${termCount} 个），请删减后再提交。`
-            : `用逗号或换行分隔，最多 ${MAX_TERMS} 个。`
-        }
-      >
-        <Textarea
-          value={terms}
-          onChange={(e) => setTerms(e.target.value)}
-          rows={2}
-        />
-      </Field>
-
-      <section className="space-y-3 rounded-xl border bg-card p-4">
-        <div>
-          <h2 className="text-base font-semibold">本次任务资料（可选）</h2>
-          <p className="text-xs text-muted-foreground">
-            任务资料只用于这一个任务，未经过知识库审核，生成结果里会标注为“任务内资料（未审核）”。
-            最多 {MAX_MATERIALS} 份（含粘贴的文本），每份不超过 50000 字；支持
-            PDF、DOCX、MD、TXT、CSV。
-          </p>
-        </div>
-        <Textarea
-          value={pasted}
-          onChange={(e) => setPasted(e.target.value)}
-          rows={4}
-          placeholder="直接粘贴一段资料文字"
-          aria-label="粘贴资料文字"
-        />
-        <ul className="space-y-1">
-          {files.map((f, i) => (
-            <li
-              key={`${f.name}-${i}`}
-              className="flex items-center gap-2 rounded-md bg-surface-low px-3 py-1.5 text-sm"
+          <Field title="套用风格预设">
+            <select
+              className={selectClass}
+              value=""
+              disabled={(presets.data ?? []).length === 0}
+              onChange={(e) => {
+                const p = presets.data?.find((x) => x.id === e.target.value)
+                if (p) setStyle({ ...style, ...p.params })
+              }}
             >
-              <Paperclip className="size-4 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate">{f.name}</span>
-              <button
-                type="button"
-                aria-label={`移除 ${f.name}`}
-                onClick={() => setFiles(files.filter((_, j) => j !== i))}
-              >
-                <X className="size-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
-        <input
-          ref={fileInput}
-          type="file"
-          accept={ACCEPT}
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            setFiles([...files, ...Array.from(e.target.files ?? [])])
-            e.target.value = ""
-          }}
-        />
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInput.current?.click()}
-          >
-            选择文件
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            已添加 {materialCount} / {MAX_MATERIALS} 份
-          </span>
+              <option value="">
+                {(presets.data ?? []).length === 0 ? "暂无预设" : "请选择预设"}
+              </option>
+              {presets.data?.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </FoldSection>
+
+      <FoldSection
+        title="本次任务资料（可选）"
+        summary={`已添加 ${materialCount} / ${MAX_MATERIALS} 份`}
+        tip={`任务资料只用于这一个任务，未经过知识库审核，生成结果里会标注为“任务内资料（未审核）”。最多 ${MAX_MATERIALS} 份（含粘贴的文本），每份不超过 50000 字；支持 PDF、DOCX、MD、TXT、CSV。`}
+        forceOpen={materialCount > MAX_MATERIALS}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <Textarea
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            rows={6}
+            placeholder="直接粘贴一段资料文字"
+            aria-label="粘贴资料文字"
+          />
+          <div className="flex flex-col gap-2 rounded-md border border-dashed p-3">
+            <ul className="flex-1 space-y-1">
+              {files.length === 0 && (
+                <li className="text-sm text-muted-foreground">
+                  还没有添加文件
+                </li>
+              )}
+              {files.map((f, i) => (
+                <li
+                  key={`${f.name}-${i}`}
+                  className="flex items-center gap-2 rounded-md bg-surface-low px-3 py-1.5 text-sm"
+                >
+                  <Paperclip className="size-4 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    aria-label={`移除 ${f.name}`}
+                    onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                  >
+                    <X className="size-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <input
+              ref={fileInput}
+              type="file"
+              accept={ACCEPT}
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                setFiles([...files, ...Array.from(e.target.files ?? [])])
+                e.target.value = ""
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => fileInput.current?.click()}
+            >
+              选择文件
+            </Button>
+          </div>
         </div>
         {materialCount > MAX_MATERIALS && (
           <p role="alert" className="text-sm text-destructive">
             资料最多 {MAX_MATERIALS} 份，请移除多余的。
           </p>
         )}
-      </section>
+      </FoldSection>
 
       {error && (
         <ErrorBanner
@@ -467,14 +492,7 @@ function NewTaskForm() {
         />
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <LoadingButton
-          type="submit"
-          loading={submit.isPending}
-          disabled={!ready}
-        >
-          创建并开始生成
-        </LoadingButton>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Button
           type="button"
           variant="outline"
@@ -483,6 +501,13 @@ function NewTaskForm() {
         >
           仅创建，稍后添加资料
         </Button>
+        <LoadingButton
+          type="submit"
+          loading={submit.isPending}
+          disabled={!ready}
+        >
+          创建并开始生成
+        </LoadingButton>
       </div>
     </form>
   )
