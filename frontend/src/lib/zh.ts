@@ -1047,6 +1047,37 @@ export const SCENARIO_TEXT = {
   manage: "管理场景模板",
 } as const
 
+// 结果页按建议改写与标签重写。
+export const RESULT_REWRITE_TEXT = {
+  risk: "按建议改写",
+  allRisks: "一键处理全部风险",
+  tags: "换一批标签",
+  emptyTags: "暂无推荐标签",
+  pending: "正在改写，完成后将打开新版本；原版本保留。",
+  hint: "改写会生成新版本并重新检查。建议超过 500 字时会截断，请在新版本核对剩余风险。",
+  noSuggestion: "部分待处理风险没有改写建议，请先人工处理；不会替你编造建议。",
+  instruction: (matched: string, suggestion: string) =>
+    `把‘${matched}’改为：${suggestion}`,
+} as const
+
+export const RISK_REWRITE_REVIEW_TEXT = {
+  hint: "按命中字段分组顺序改写；每次最多 500 字，超长建议分步处理，不丢弃后续条目。每步生成新版本，请最后核对。",
+  manual: "请手动编辑",
+  manualHint:
+    "部分风险缺少建议、字段不支持改写或命中文字过长，请先手动编辑；不会跳过这些风险。",
+  progress: (n: number, total: number) => `第 ${n} / ${total} 步`,
+  stopped: (fields: string, count: number, total: number) =>
+    `改写已停止：已完成 ${count} / ${total} 步（${fields}），后续步骤未执行。请打开已生成版本核对，勿从旧版重复提交。`,
+  openLast: "打开已完成的最新版本",
+  targets: {
+    titles: "标题",
+    body: "正文",
+    cover: "封面",
+    hashtags: "标签",
+    opening: "开头",
+  },
+} as const
+
 export const VIRAL_DELETE_TEXT = {
   sampleHint:
     "添加后不能编辑原文；品牌管理员可以删除样本及其分析结构。请仅粘贴已获授权的文本，最多 5000 个 Unicode 码点。",
